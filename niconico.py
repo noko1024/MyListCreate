@@ -1,5 +1,4 @@
 from selenium import webdriver
-import requests
 from bs4 import BeautifulSoup
 import lxml
 import statistics
@@ -19,14 +18,15 @@ checkword = input("checkword>")
 cwd = os.path.split(os.path.realpath(__file__))[0]
 jsonPath = cwd + "/pivot.json"
 
+USER = input("LoginID>")
+PASS = getpass.getpass("LoginPassword>")
+
 options = webdriver.ChromeOptions()
 options.add_argument('--ignore-certificate-errors')
 options.add_argument('--ignore-ssl-errors')
-browser = webdriver.Chrome("D:\download\chromedriver_win32/chromedriver.exe",chrome_options=options)
+browser = webdriver.Chrome("D:\download\chrome\chromedriver.exe",chrome_options=options)
 browser.implicitly_wait(1)
 
-USER = input("LoginID>")
-PASS = getpass.getpass("LoginPassword")
 rootURL = "https://www.nicovideo.jp"
 page = 1
 
