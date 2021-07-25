@@ -24,7 +24,7 @@ PASS = getpass.getpass("LoginPassword>")
 options = webdriver.ChromeOptions()
 options.add_argument('--ignore-certificate-errors')
 options.add_argument('--ignore-ssl-errors')
-browser = webdriver.Chrome("D:\download\chrome\chromedriver.exe",chrome_options=options)
+browser = webdriver.Chrome("D:\develop\git\MyListCreate\lib\chromedriver.exe",chrome_options=options)
 browser.implicitly_wait(1)
 
 rootURL = "https://www.nicovideo.jp"
@@ -65,12 +65,12 @@ def mylistCreate():
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
-            btn[1].click()
+            btn[0].click()
             btn = browser.find_element_by_xpath('//*[@data-mylist-id="-2"]')
             btn.click()
-            e = browser.find_element_by_css_selector('input.AddingMylistModal-nameInput')
+            e = browser.find_element_by_css_selector('input.AddMylistModal-nameInput')
             e.send_keys(mylistName)
-            btn = browser.find_element_by_css_selector('button.ActionButton.AddingMylistModal-submit')
+            btn = browser.find_element_by_css_selector('button.ActionButton.AddMylistModal-submit')
             btn.click()
             print("mylistCreate:success")
             break
@@ -83,10 +83,10 @@ def mylistAdd():
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
-            btn[1].click()
+            btn[0].click()
             btn = browser.find_element_by_xpath('//*[@data-mylist-name="%s"]' % mylistName)
             btn.click()
-            btn = browser.find_element_by_css_selector("button.ActionButton.AddingMylistModal-submit")
+            btn = browser.find_element_by_css_selector("button.ActionButton.AddMylistModal-submit")
             btn.click()
             print("mylistAdd:success")
             break
@@ -104,6 +104,8 @@ def TagCheck(tag):
             continue
         soup = BeautifulSoup(browser.page_source, "lxml")
         lookTagList = soup.select(".TagItem.is-locked.is-nicodicAvailable")
+        lookTagList.extend(soup.select(".TagItem.is-locked"))
+
         if not lookTagList:
             access = soup.find("h1").text
             print(access)
@@ -129,7 +131,7 @@ def MainScraping(URL):
     time.sleep(0.5)
     name = None
     if TagCheck(checkword) == True:
-        if myListCount % 500 == 0 and myListCount != 0 and mylistName != "%sその%s" % (checkword,str(int(myListCount/500+1))):
+        if myListCount % 500 == 0:
             mylistCreate()
         else:
             mylistAdd()
