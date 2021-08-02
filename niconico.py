@@ -24,7 +24,7 @@ PASS = getpass.getpass("LoginPassword>")
 options = webdriver.ChromeOptions()
 options.add_argument('--ignore-certificate-errors')
 options.add_argument('--ignore-ssl-errors')
-browser = webdriver.Chrome("D:\develop\git\MyListCreate\lib\chromedriver.exe",chrome_options=options)
+browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
 browser.implicitly_wait(1)
 
 rootURL = "https://www.nicovideo.jp"
@@ -47,7 +47,7 @@ else:
 
 #ニコニコ動画へのログイン
 def login():
-    url_login = "https://account.nicovideo.jp/login?site=niconico&next_url=%2F&sec=header_pc&cmnhd_ref=device%3Dpc%26site%3Dniconico%26pos%3Dheader_login%26page%3Dtop"
+    url_login = "https://account.nicovideo.jp/login"
     browser.get(url_login)
     e = browser.find_element_by_name("mail_tel")
     e.clear()
@@ -219,7 +219,7 @@ def PivotCreate():
     data[checkword]["name"] = mylistName
     ids = [rawIdList[pivotPoint:],rawIdList[:pivotPoint]]
     with open(jsonPath,mode="w") as f:
-    	json.dump(data,f,indent=4)
+        json.dump(data,f,indent=4)
 
     conn.close()
     print(pivot)
@@ -294,7 +294,7 @@ def IdAdd(id):
         mylistName = data[checkword]["name"]
     ids = [rawIdList[pivotPoint:],rawIdList[:pivotPoint]]
     with open(jsonPath,mode="w") as f:
-    	json.dump(data,f,indent=4)
+        json.dump(data,f,indent=4)
 
     conn.close()
     print(pivot)
