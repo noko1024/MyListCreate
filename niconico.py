@@ -14,6 +14,7 @@ import getpass
 #初期設定
 mode = input("mode>")
 checkword = input("checkword>")
+
 #カレントディレクトリを取得
 cwd = os.path.split(os.path.realpath(__file__))[0]
 jsonPath = cwd + "/pivot.json"
@@ -103,6 +104,7 @@ def TagCheck(tag):
             browser.refresh()
             continue
         soup = BeautifulSoup(browser.page_source, "lxml")
+        #タグ情報を取得(タグロック済み、ニコニコ大百科あり)
         lookTagList = soup.select(".TagItem.is-locked.is-nicodicAvailable")
         lookTagList.extend(soup.select(".TagItem.is-locked"))
 
@@ -117,7 +119,7 @@ def TagCheck(tag):
                 break
         for lookTag in lookTagList:
             tagName = lookTag.find("a",{"class":"Link TagItem-name"}).text
-            if tagName == tag:
+            if tagName.lower() == tag.lower():
                 check = True
                 break
         print("TagCheck:"+str(check))
