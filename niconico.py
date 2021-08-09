@@ -11,14 +11,13 @@ import os
 import pathlib
 import getpass
 
+IntegrationBuffer()
 #初期設定
-#ここでタグ固有のデータベース名を取得する
 mode = input("mode>")
 if mode == "remove":
     RemoveMain()
 
-checkword = input("checkword>")
-
+tagName = input("tagName>")
 if mode == "rmtable":
 
 USER = input("LoginID>")
@@ -48,10 +47,40 @@ def login():
     btn = browser.find_element_by_id('login__submit')
     btn.click()
 
+#前回正常終了していなかったときにbufferと結合しておく
+def IntegrationBuffer():
+    #buffer tableをきれいにする
+
+#データベースが生成されているかチェックする存在しなければ生成する
+def DBcheck():
+
+#htmlからのデータ取得
+def MainScraping(URL,mylistCount,mylistName):
+    browser.get(rootURL + URL)
+    time.sleep(0.5)
+    name = None
+    if TagCheck(tagName) == True:
+        if mylistCount % 500 == 0:
+            mylistName = mylistCreate(mylistName)
+        else:
+            mylistAdd(mylistName)
+        myListCount += 1
+    time.sleep(10)
+    conn = sqlite3.connect('niconico.db')
+    c = conn.cursor()
+
+    #buffer table にデータを残しておく
+    c.execute("insert into buffer(id,mylistNum,tag) values (?,?,?)",(int(URL[9:17]),int(myListCount/500+1),tagName))
+
+    conn.commit()
+    conn.close()
+    print(URL[9:17]+"finish")
+
+    return mylistCount,mylistName
+
 #マイリスの生成
-def mylistCreate():
-    global mylistName
-    mylistName = "%sその%s" % (checkword,str(int(myListCount/500+1)))
+def mylistCreate(mylistCount):
+    mylistName = "%sその%s" % (tagName,str(int(mylistCount/500+1)))
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
@@ -68,8 +97,10 @@ def mylistCreate():
             time.sleep(10)
             browser.refresh()
 
+    return mylistName
+
 #マイリス追加
-def mylistAdd():
+def mylistAdd(mylistName):
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
@@ -115,75 +146,29 @@ def TagCheck(tag):
         break
     return check
 
-######################################
-#htmlからのデータ取得
-def MainScraping(URL):
-    global myListCount
-    browser.get(rootURL + URL)
-    time.sleep(0.5)
-    name = None
-    if TagCheck(checkword) == True:
-        if myListCount % 500 == 0:
-            mylistCreate()
-        else:
-            mylistAdd()
-        name = mylistName
-        myListCount += 1
-    time.sleep(10)
-    conn = sqlite3.connect('niconico.db')
-    c = conn.cursor()
-
-    c.execute('insert into ids(id,tag,name) values (?,?,?)',(int(URL[9:17]),checkword,name))
-
-    conn.commit()
-    conn.close()
-    print(URL[9:17]+"finish")
-
 #データベースへの登録
-def DataBaseAdd(HLIdList):
+def DataBaseAdd(tableName):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-"""
-    c.execute('''DROP TABLE IF EXISTS ids_high''')
-    c.execute('''DROP TABLE IF EXISTS ids_low''')
-    c.execute("create table ids_high(id int,tag text)")
-    c.execute("create table ids_low(id int,tag text)")
-    c.executemany('insert into ids_high(id,tag) values (?,?)',HLIdList[0])
-    c.executemany('insert into ids_low(id,tag) values (?,?)',HLIdList[1])
-"""
+    c.executemany("insert into ?(id,mylistNum) select id,mylistNum from buffer",tableName)
+
     conn.commit()
     conn.close()
 
 #過去に登録したことがあるか
-def Authentication(id):
+def Authentication(tableName,id):
     #Pivotの読み込み
     with open(jsonPath) as d:
         f = d.read()
         data = json.loads(f)
 
-    """
-    #json内部に検索キャッシュが存在したら利用する。
-    if not checkword in data.keys():
-        pivot = 0
-        myListCount = 0
-        mylistName = checkword
-    else:
-        pivot = data[checkword]["pivot"]
-        myListCount = data[checkword]["count"]
-        mylistName = data[checkword]["name"]
-
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    if id >= pivot:
-        print("high")
-        c.execute("select id from ids_high where id = ? and tag = ?",(id,checkword))
-    else:
-        print("low")
-        c.execute("select id from ids_low where id = ? and tag = ?",(id,checkword))
+    c.execute("select id from ? where id = ?",(tableName,id))
     check = c.fetchone()
-    """
+
     print(check)
     if check:
         print("Authentication:True")
@@ -192,45 +177,28 @@ def Authentication(id):
         print("Authentication:False")
         return False
 
-"""
-#Pivotの生成
-def PivotCreate():
+#######################################
+#追加処理-発火ポイント
+def AddMain():
+    #mylistCount,mylistNameの取得
+    #ここでタグ固有のデータベース名を取得する
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute('select id,tag from ids where tag == ?',(checkword,))
-    rawIdList = c.fetchall()
-    rawIdList.sort()
-
-    idList = [id[0] for id in rawIdList]
-
-    with open(jsonPath) as d:
-        f = d.read()
-        data = json.loads(f)
-
-    pivot = statistics.median_high(idList)
-    pivotPoint = idList.index(pivot)
-    data[checkword] = {}
-    data[checkword]["pivot"] = pivot
-    data[checkword]["count"] = myListCount
-    data[checkword]["name"] = mylistName
-    ids = [rawIdList[pivotPoint:],rawIdList[:pivotPoint]]
-    with open(jsonPath,mode="w") as f:
-        json.dump(data,f,indent=4)
+    c.execute("select tableName,mylistCount,mylistName from tableDB where tag = ?",(tagName,))
+    confList = c.fetchone()
 
     conn.close()
-    print(pivot)
-    print(pivotPoint)
-    return ids
-"""
 
-#追加処理-発火ポイント
-def AddMain():
+    tableName = confList[0]
+    mylistCount = confList[1]
+    mylistName = confList[2]
+
     page = 1
 
     login()
 
-    checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (checkword,page)
+    checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
 
     browser.get(checkurl)
 
@@ -251,17 +219,16 @@ def AddMain():
 
         for URL in URLs:
             print(URL[9:17]+"start")
-            if Authentication(int(URL[9:17])) == True:
+            if Authentication(tableName,int(URL[9:17])) == True:
                 continue
-            MainScraping(URL)
+            mylistCount,mylistName = MainScraping(URL,mylistCount,mylistName)
 
         page += 1
-        checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (checkword,page)
+        checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
         browser.get(checkurl)
         time.sleep(10)
 
-    ids = PivotCreate()
-    DataBaseAdd(ids)
+    DataBaseAdd(tableName)
     browser.quit()
 
 #レギュ違反DB登録
@@ -269,9 +236,9 @@ def IdAdd(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute('select id from ids where tag == ?',(checkword,))
+    c.execute('select id from ids where tag == ?',(tagName,))
     rawIdList = c.fetchall()
-    rawIdList.append((id,checkword))
+    rawIdList.append((id,tagName))
     rawIdList.sort()
 
     idList = [id[0] for id in rawIdList]
@@ -282,14 +249,14 @@ def IdAdd(id):
 
     pivot = statistics.median_high(idList)
     pivotPoint = idList.index(pivot)
-    if not checkword in data.keys():
+    if not tagName in data.keys():
         pivot = 0
         myListCount = 0
-        mylistName = checkword
+        mylistName = tagName
     else:
-        pivot = data[checkword]["pivot"]
-        myListCount = data[checkword]["count"]
-        mylistName = data[checkword]["name"]
+        pivot = data[tagName]["pivot"]
+        myListCount = data[tagName]["count"]
+        mylistName = data[tagName]["name"]
     ids = [rawIdList[pivotPoint:],rawIdList[:pivotPoint]]
     with open(jsonPath,mode="w") as f:
         json.dump(data,f,indent=4)
@@ -304,7 +271,7 @@ def Check(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute('select name from ids where tag == ? and id == ?',(checkword,id))
+    #c.execute('select name from ids where tag == ? and id == ?',(tagName,id))
     data = c.fetchone()
     if data[0]:
         return data[0]
@@ -322,6 +289,4 @@ def RemoveMain():
             print("Already added\nPlease delete it manually\nmylistName:" + answer)
     else:
         ids = IdAdd(passid)
-        DataBaseAdd(ids,[(passid,checkword,None)])
-
-
+        DataBaseAdd(ids,[(passid,tagName,None)])
