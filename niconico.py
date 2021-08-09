@@ -12,15 +12,19 @@ import pathlib
 import getpass
 
 #初期設定
+#ここでタグ固有のデータベース名を取得する
 mode = input("mode>")
+if mode == "remove":
+    RemoveMain()
+
 checkword = input("checkword>")
 
-#カレントディレクトリを取得
-cwd = os.path.split(os.path.realpath(__file__))[0]
-jsonPath = cwd + "/pivot.json"
+if mode == "rmtable":
 
 USER = input("LoginID>")
 PASS = getpass.getpass("LoginPassword>")
+if mode == "add":
+    AddMain()
 
 options = webdriver.ChromeOptions()
 options.add_argument('--ignore-certificate-errors')
@@ -30,21 +34,6 @@ browser.implicitly_wait(1)
 
 rootURL = "https://www.nicovideo.jp"
 page = 1
-
-#Pivotの読み込み
-with open(jsonPath) as d:
-    f = d.read()
-    data = json.loads(f)
-
-#json内部に検索キャッシュが存在したら利用する。
-if not checkword in data.keys():
-    pivot = 0
-    myListCount = 0
-    mylistName = checkword
-else:
-    pivot = data[checkword]["pivot"]
-    myListCount = data[checkword]["count"]
-    mylistName = data[checkword]["name"]
 
 #ニコニコ動画へのログイン
 def login():
@@ -126,6 +115,7 @@ def TagCheck(tag):
         break
     return check
 
+######################################
 #htmlからのデータ取得
 def MainScraping(URL):
     global myListCount
@@ -154,12 +144,14 @@ def DataBaseAdd(HLIdList):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
+"""
     c.execute('''DROP TABLE IF EXISTS ids_high''')
     c.execute('''DROP TABLE IF EXISTS ids_low''')
     c.execute("create table ids_high(id int,tag text)")
     c.execute("create table ids_low(id int,tag text)")
     c.executemany('insert into ids_high(id,tag) values (?,?)',HLIdList[0])
     c.executemany('insert into ids_low(id,tag) values (?,?)',HLIdList[1])
+"""
     conn.commit()
     conn.close()
 
@@ -170,6 +162,7 @@ def Authentication(id):
         f = d.read()
         data = json.loads(f)
 
+    """
     #json内部に検索キャッシュが存在したら利用する。
     if not checkword in data.keys():
         pivot = 0
@@ -190,6 +183,7 @@ def Authentication(id):
         print("low")
         c.execute("select id from ids_low where id = ? and tag = ?",(id,checkword))
     check = c.fetchone()
+    """
     print(check)
     if check:
         print("Authentication:True")
@@ -198,6 +192,7 @@ def Authentication(id):
         print("Authentication:False")
         return False
 
+"""
 #Pivotの生成
 def PivotCreate():
     conn = sqlite3.connect('niconico.db')
@@ -227,6 +222,7 @@ def PivotCreate():
     print(pivot)
     print(pivotPoint)
     return ids
+"""
 
 #追加処理-発火ポイント
 def AddMain():
@@ -308,10 +304,10 @@ def Check(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute('select id,name from ids where tag == ? and id == ?',(checkword,id))
+    c.execute('select name from ids where tag == ? and id == ?',(checkword,id))
     data = c.fetchone()
-    if data[1]:
-        return data[1]
+    if data[0]:
+        return data[0]
     else:
         return None
 
@@ -329,11 +325,3 @@ def RemoveMain():
         DataBaseAdd(ids,[(passid,checkword,None)])
 
 
-if __name__ == "__main__":
-    if mode == "add":
-        AddMain()
-    elif mode == "remove":
-        RemoveMain()
-    elif mode == "pivot":
-        ids = PivotCreate()
-        DataBaseAdd(ids)
