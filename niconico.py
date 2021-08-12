@@ -167,7 +167,9 @@ def Authentication(tableName,id):
     c = conn.cursor()
 
     c.execute("select id from ? where id = ?",(tableName,id))
-    check = c.fetchone()
+    ch = c.fetchone()
+    c.execute("select id from rmTable where id = ?",(id,))
+    check = ch + c.fetchone()
 
     print(check)
     if check:
@@ -177,7 +179,6 @@ def Authentication(tableName,id):
         print("Authentication:False")
         return False
 
-#######################################
 #追加処理-発火ポイント
 def AddMain():
     #mylistCount,mylistNameの取得
@@ -271,10 +272,26 @@ def Check(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    #c.execute('select name from ids where tag == ? and id == ?',(tagName,id))
-    data = c.fetchone()
-    if data[0]:
-        return data[0]
+    c.execute("select id from rmTable where id = ?",(id,))
+    rmed = c.fetchone()
+
+    if rmed:
+        return "removed"
+
+    c.execute("select tag,tableName,mylistName from tableDB")
+    tags = c.fetchall()
+
+    ans = []
+
+    for tag in tags:
+        c.execute("select mylistNum from ? where id = ?",(tag[1],id))
+        myNum = c.fetchone()
+
+        if myNum:
+            ans.append([tag[0],tag[2],myNum[0]]) #[[tag,mylistName,mylistNum]...]
+
+    if ans:
+        return ans
     else:
         return None
 
@@ -283,10 +300,15 @@ def RemoveMain():
     passid = int(input("id>"))
     if Authentication(passid) == True:
         answer = Check(passid)
-        if not answer:
-            print("This ID has not been added")
+        if answer = "removed":
+            print("This ID is registered")
+        else if not answer:
+            print("Register this ID")
+            IdAdd()
         else:
-            print("Already added\nPlease delete it manually\nmylistName:" + answer)
+            print("Already added\nPlease delete it manually\nmylistName")
+            for mylist in ans:
+                return #ここは後で書きます
     else:
         ids = IdAdd(passid)
         DataBaseAdd(ids,[(passid,tagName,None)])
