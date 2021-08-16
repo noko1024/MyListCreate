@@ -5,32 +5,17 @@ import statistics
 import sqlite3
 import time
 import re
+import os
 import sys
 import pathlib
 import getpass
 import random
 import string
 
-IntegrationBuffer()
-#初期設定
-mode = input("mode>")
-if mode == "remove":
-    RemoveMain()
-
-tagName = input("tagName>")
-if mode == "rmtable":
-    return
-
-USER = input("LoginID>")
-PASS = getpass.getpass("LoginPassword>")
-if mode == "add":
-    AddMain()
-
+cwd = os.path.split(os.path.realpath(__file__))[0]
 options = webdriver.ChromeOptions()
 options.add_argument('--ignore-certificate-errors')
 options.add_argument('--ignore-ssl-errors')
-browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
-browser.implicitly_wait(1)
 
 rootURL = "https://www.nicovideo.jp"
 page = 1
@@ -49,15 +34,18 @@ def login():
     btn.click()
 
 #前回結合していなかったときにbufferと結合しておく
-def IntegrationBuffer():
+def StartUp():
     conn = sqlite3.connect("niconico.db")
     c = conn.cursor()
 
     for tag in c.execute("select tag from buffer"):
-        c.execute("select tableName from tableDB where tag = %s" % tag[0])
+        c.execute("select tableName from tableDB where tag = '%s'" % tag[0])
         table = c.fetchone()
-        c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer where tag = %s" % (table[0],tag[0]))
+        c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer where tag = '%s'" % (table[0],tag[0]))
+        c.execute("select count(*) from %s" % table[0])
+        c.execute("update tableDB set mylistCount = %s" % c.fetchone()[0])
 
+    c.execute("delete from buffer")
     conn.commit()
     conn.close()
 
@@ -66,50 +54,52 @@ def DBcheck(tag):
     conn = sqlite3.connect("niconico.db")
     c = conn.cursor()
 
-    c.execute("select tableName from tableDB where tag = %s" % tag)
+    c.execute("select tableName from tableDB where tag = '%s'" % tag)
     tableName = c.fetchone()
 
     if not tableName:
         while True:
-            name = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+            name = ''.join(random.choices(string.ascii_letters, k=10))
             c.execute("select count(*) from sqlite_master where type = 'table' and name = '%s'" % name)
             ch = int(c.fetchone()[0])
             if ch == 0:
                 break;
 
         c.execute("create table %s(id int primary key,mylistNum int)" % name)
-        c.execute("insert into tableDB(tag,tableName,mylistCount,mylistName) values (%s,%s,%s,%s)" % (tag,name,0,tag))
+        c.execute("insert into tableDB values ('%s','%s',%s,'%s')" % (tag,name,0,tag))
 
     conn.commit()
     conn.close()
 
 #htmlからのデータ取得
 def MainScraping(URL,mylistCount,mylistName):
+    if int(mylistCount/25000) >= 1:
+        name = "%sその%s" % (mylistName,int(mylistCount/25000))
+    else:
+        name = mylistName
     browser.get(rootURL + URL)
     time.sleep(0.5)
-    name = None
     if TagCheck(tagName) == True:
         if mylistCount % 500 == 0:
-            mylistName = mylistCreate(mylistName)
+            mylistCreate(name,mylistCount)
         else:
-            mylistAdd(mylistName)
-        myListCount += 1
+            mylistAdd(name)
+        mylistCount += 1
     time.sleep(10)
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
     #buffer table にデータを残しておく
-    c.execute("insert into buffer(id,mylistNum,tag) values (%s,%s,%s)" % (int(URL[9:17]),int(myListCount/500+1),tagName))
+    c.execute("insert into buffer(id,mylistNum,tag) values ('%s','%s','%s')" % (int(URL[9:17]),int(mylistCount/25000),tagName))
 
     conn.commit()
     conn.close()
     print(URL[9:17]+"finish")
 
-    return mylistCount,mylistName
+    return mylistCount
 
 #マイリスの生成
-def mylistCreate(mylistCount):
-    mylistName = "%sその%s" % (tagName,str(int(mylistCount/500+1)))
+def mylistCreate(name,mylistCount):
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
@@ -117,7 +107,7 @@ def mylistCreate(mylistCount):
             btn = browser.find_element_by_xpath('//*[@data-mylist-id="-2"]')
             btn.click()
             e = browser.find_element_by_css_selector('input.AddMylistModal-nameInput')
-            e.send_keys(mylistName)
+            e.send_keys(name)
             btn = browser.find_element_by_css_selector('button.ActionButton.AddMylistModal-submit')
             btn.click()
             print("mylistCreate:success")
@@ -126,15 +116,13 @@ def mylistCreate(mylistCount):
             time.sleep(10)
             browser.refresh()
 
-    return mylistName
-
 #マイリス追加
-def mylistAdd(mylistName):
+def mylistAdd(name):
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
             btn[0].click()
-            btn = browser.find_element_by_xpath('//*[@data-mylist-name="%s"]' % mylistName)
+            btn = browser.find_element_by_xpath('//*[@data-mylist-name="%s"]' % name)
             btn.click()
             btn = browser.find_element_by_css_selector("button.ActionButton.AddMylistModal-submit")
             btn.click()
@@ -180,28 +168,23 @@ def DataBaseAdd(tableName):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer" % tableName)
+    c.execute("insert into %s select id,mylistNum from buffer" % tableName)
 
     conn.commit()
     conn.close()
 
 #過去に登録したことがあるか
 def Authentication(tableName,id):
-    #Pivotの読み込み
-    with open(jsonPath) as d:
-        f = d.read()
-        data = json.loads(f)
-
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("select id from %s where id = %s" % (tableName,id))
+    c.execute("select id from %s where id = '%s'" % (tableName,id))
     ch = c.fetchone()
-    c.execute("select id from rmTable where id = %s" % id)
-    check = ch + c.fetchone()
+    c.execute("select id from rmTable where id = '%s'" % id)
+    check = c.fetchone()
 
     print(check)
-    if check:
+    if check or ch:
         print("Authentication:True")
         return True
     else:
@@ -216,7 +199,7 @@ def AddMain():
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("select tableName,mylistCount,mylistName from tableDB where tag = %s" % tagName)
+    c.execute("select tableName,mylistCount,mylistName from tableDB where tag = '%s'" % tagName)
     confList = c.fetchone()
 
     conn.close()
@@ -252,7 +235,7 @@ def AddMain():
             print(URL[9:17]+"start")
             if Authentication(tableName,int(URL[9:17])) == True:
                 continue
-            mylistCount,mylistName = MainScraping(URL,mylistCount,mylistName)
+            mylistCount = MainScraping(URL,mylistCount,mylistName)
 
         page += 1
         checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
@@ -267,7 +250,7 @@ def IdAdd(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c,execute("insert into rmTable(id) valeus (%s)" % id)
+    c,execute("insert into rmTable valeus ('%s')" % id)
 
     conn.commit()
     conn.close()
@@ -279,7 +262,7 @@ def Check(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("select id from rmTable where id = %s" % id)
+    c.execute("select id from rmTable where id = '%s'" % id)
     rmed = c.fetchone()
 
     if rmed:
@@ -288,7 +271,7 @@ def Check(id):
     ans = []
 
     for tag in c.execute("select tag,tableName,mylistName from tableDB"):
-        c.execute("select mylistNum from %s where id = %s" % (tag[1],id))
+        c.execute("select mylistNum from %s where id = '%s'" % (tag[1],id))
         myNum = c.fetchone()
 
         if myNum:
@@ -311,5 +294,26 @@ def RemoveMain():
     else:
         print("Already added\nPlease delete it manually\nmylistName")
         for mylist in answer:
-            print("\t%sその%s" % (mylist[0],mylist[1]))
+            if mylist[1] != 0:
+                print("\t%sその%s" % (mylist[0],mylist[1]))
+            else:
+                print("\t%s" % mylist[0])
             IdAdd(passid)
+
+
+StartUp()
+#初期設定
+mode = input("mode>")
+if mode == "remove":
+    RemoveMain()
+
+tagName = input("tagName>")
+if mode == "rmtable":
+    pass
+
+USER = input("LoginID>")
+PASS = getpass.getpass("LoginPassword>")
+if mode == "add":
+    browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
+    browser.implicitly_wait(1)
+    AddMain()
