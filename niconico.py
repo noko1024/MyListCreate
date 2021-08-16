@@ -237,35 +237,12 @@ def IdAdd(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute('select id from ids where tag == ?',(tagName,))
-    rawIdList = c.fetchall()
-    rawIdList.append((id,tagName))
-    rawIdList.sort()
+    c,execute("insert into rmTable(id) valeus (?)",(id,))
 
-    idList = [id[0] for id in rawIdList]
-
-    with open(jsonPath) as d:
-        f = d.read()
-        data = json.loads(f)
-
-    pivot = statistics.median_high(idList)
-    pivotPoint = idList.index(pivot)
-    if not tagName in data.keys():
-        pivot = 0
-        myListCount = 0
-        mylistName = tagName
-    else:
-        pivot = data[tagName]["pivot"]
-        myListCount = data[tagName]["count"]
-        mylistName = data[tagName]["name"]
-    ids = [rawIdList[pivotPoint:],rawIdList[:pivotPoint]]
-    with open(jsonPath,mode="w") as f:
-        json.dump(data,f,indent=4)
-
+    conn.commit()
     conn.close()
     print(pivot)
     print(pivotPoint)
-    return ids
 
 #動画データのマイリス保存先検索
 def Check(id):
@@ -278,17 +255,14 @@ def Check(id):
     if rmed:
         return "removed"
 
-    c.execute("select tag,tableName,mylistName from tableDB")
-    tags = c.fetchall()
-
     ans = []
 
-    for tag in tags:
+    for tag in c.execute("select tag,tableName,mylistName from tableDB"):
         c.execute("select mylistNum from ? where id = ?",(tag[1],id))
         myNum = c.fetchone()
 
         if myNum:
-            ans.append([tag[0],tag[2],myNum[0]]) #[[tag,mylistName,mylistNum]...]
+            ans.append([tag[2],myNum[0]]) #[[mylistName,mylistNum]...]
 
     if ans:
         return ans
@@ -298,17 +272,14 @@ def Check(id):
 #削除発火ポイント
 def RemoveMain():
     passid = int(input("id>"))
-    if Authentication(passid) == True:
-        answer = Check(passid)
-        if answer = "removed":
-            print("This ID is registered")
-        else if not answer:
-            print("Register this ID")
-            IdAdd()
-        else:
-            print("Already added\nPlease delete it manually\nmylistName")
-            for mylist in ans:
-                return #ここは後で書きます
+    answer = Check(passid)
+    if answer = "removed":
+        print("This ID is registered")
+    else if not answer:
+        print("Register this ID")
+        IdAdd(passid)
     else:
-        ids = IdAdd(passid)
-        DataBaseAdd(ids,[(passid,tagName,None)])
+        print("Already added\nPlease delete it manually\nmylistName")
+        for mylist in answer:
+            print("\t%sその%s" % (mylist[0],mylist[1]))
+            IdAdd(passid)
