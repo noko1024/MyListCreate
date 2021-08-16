@@ -305,7 +305,7 @@ def RemoveMain():
     answer = Check(passid)
     if answer == "removed":
         print("This ID is registered")
-    else if not answer:
+    elif not answer:
         print("Register this ID")
         IdAdd(passid)
     else:
