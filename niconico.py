@@ -3,13 +3,13 @@ from bs4 import BeautifulSoup
 import lxml
 import statistics
 import sqlite3
-import json
 import time
 import re
 import sys
-import os
 import pathlib
 import getpass
+import random
+import string
 
 IntegrationBuffer()
 #初期設定
@@ -19,6 +19,7 @@ if mode == "remove":
 
 tagName = input("tagName>")
 if mode == "rmtable":
+    return
 
 USER = input("LoginID>")
 PASS = getpass.getpass("LoginPassword>")
@@ -47,12 +48,40 @@ def login():
     btn = browser.find_element_by_id('login__submit')
     btn.click()
 
-#前回正常終了していなかったときにbufferと結合しておく
+#前回結合していなかったときにbufferと結合しておく
 def IntegrationBuffer():
-    #buffer tableをきれいにする
+    conn = sqlite3.connect("niconico.db")
+    c = conn.cursor()
+
+    for tag in c.execute("select tag from buffer"):
+        c.execute("select tableName from tableDB where tag = %s" % tag[0])
+        table = c.fetchone()
+        c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer where tag = %s" % (table[0],tag[0]))
+
+    conn.commit()
+    conn.close()
 
 #データベースが生成されているかチェックする存在しなければ生成する
-def DBcheck():
+def DBcheck(tag):
+    conn = sqlite3.connect("niconico.db")
+    c = conn.cursor()
+
+    c.execute("select tableName from tableDB where tag = %s" % tag)
+    tableName = c.fetchone()
+
+    if not tableName:
+        while True:
+            name = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+            c.execute("select count(*) from sqlite_master where type = 'table' and name = '%s'" % name)
+            ch = int(c.fetchone()[0])
+            if ch == 0:
+                break;
+
+        c.execute("create table %s(id int primary key,mylistNum int)" % name)
+        c.execute("insert into tableDB(tag,tableName,mylistCount,mylistName) values (%s,%s,%s,%s)" % (tag,name,0,tag))
+
+    conn.commit()
+    conn.close()
 
 #htmlからのデータ取得
 def MainScraping(URL,mylistCount,mylistName):
@@ -70,7 +99,7 @@ def MainScraping(URL,mylistCount,mylistName):
     c = conn.cursor()
 
     #buffer table にデータを残しておく
-    c.execute("insert into buffer(id,mylistNum,tag) values (?,?,?)",(int(URL[9:17]),int(myListCount/500+1),tagName))
+    c.execute("insert into buffer(id,mylistNum,tag) values (%s,%s,%s)" % (int(URL[9:17]),int(myListCount/500+1),tagName))
 
     conn.commit()
     conn.close()
@@ -151,7 +180,7 @@ def DataBaseAdd(tableName):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.executemany("insert into ?(id,mylistNum) select id,mylistNum from buffer",tableName)
+    c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer" % tableName)
 
     conn.commit()
     conn.close()
@@ -166,9 +195,9 @@ def Authentication(tableName,id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("select id from ? where id = ?",(tableName,id))
+    c.execute("select id from %s where id = %s" % (tableName,id))
     ch = c.fetchone()
-    c.execute("select id from rmTable where id = ?",(id,))
+    c.execute("select id from rmTable where id = %s" % id)
     check = ch + c.fetchone()
 
     print(check)
@@ -181,12 +210,13 @@ def Authentication(tableName,id):
 
 #追加処理-発火ポイント
 def AddMain():
+    DBcheck(tagName)
     #mylistCount,mylistNameの取得
     #ここでタグ固有のデータベース名を取得する
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("select tableName,mylistCount,mylistName from tableDB where tag = ?",(tagName,))
+    c.execute("select tableName,mylistCount,mylistName from tableDB where tag = %s" % tagName)
     confList = c.fetchone()
 
     conn.close()
@@ -237,7 +267,7 @@ def IdAdd(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c,execute("insert into rmTable(id) valeus (?)",(id,))
+    c,execute("insert into rmTable(id) valeus (%s)" % id)
 
     conn.commit()
     conn.close()
@@ -249,7 +279,7 @@ def Check(id):
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    c.execute("select id from rmTable where id = ?",(id,))
+    c.execute("select id from rmTable where id = %s" % id)
     rmed = c.fetchone()
 
     if rmed:
@@ -258,7 +288,7 @@ def Check(id):
     ans = []
 
     for tag in c.execute("select tag,tableName,mylistName from tableDB"):
-        c.execute("select mylistNum from ? where id = ?",(tag[1],id))
+        c.execute("select mylistNum from %s where id = %s" % (tag[1],id))
         myNum = c.fetchone()
 
         if myNum:
