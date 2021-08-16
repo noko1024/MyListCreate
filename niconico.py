@@ -303,7 +303,7 @@ def Check(id):
 def RemoveMain():
     passid = int(input("id>"))
     answer = Check(passid)
-    if answer = "removed":
+    if answer == "removed":
         print("This ID is registered")
     else if not answer:
         print("Register this ID")
