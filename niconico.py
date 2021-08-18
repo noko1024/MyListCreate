@@ -21,7 +21,7 @@ rootURL = "https://www.nicovideo.jp"
 page = 1
 
 #ニコニコ動画へのログイン
-def login():
+def login(browser):
     url_login = "https://account.nicovideo.jp/login"
     browser.get(url_login)
     e = browser.find_element_by_name("mail_tel")
@@ -96,7 +96,7 @@ def DBcheck(tag):
     conn.close()
 
 #htmlからのデータ取得
-def MainScraping(URL,mylistCount,mylistName):
+def MainScraping(URL,mylistCount,mylistName,browser):
     if int(mylistCount/500) >= 1:
         name = "%sその%s" % (mylistName,int(mylistCount/500))
     else:
@@ -104,13 +104,13 @@ def MainScraping(URL,mylistCount,mylistName):
     browser.get(rootURL + URL)
     time.sleep(0.5)
     #タグ固定のチェック
-    if TagCheck(tagName) == True:
+    if TagCheck(tagName,browser) == True:
         if mylistCount % 500 == 0:
             #マイリストの生成&追加
-            mylistCreate(name,mylistCount)
+            mylistCreate(name,mylistCount,browser)
         else:
             #マイリストへ追加
-            mylistAdd(name)
+            mylistAdd(name,browser)
         mylistCount += 1
 
     conn = sqlite3.connect('niconico.db')
@@ -128,7 +128,7 @@ def MainScraping(URL,mylistCount,mylistName):
     return mylistCount
 
 #マイリスの生成
-def mylistCreate(name,mylistCount):
+def mylistCreate(name,mylistCount,browser):
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
@@ -146,7 +146,7 @@ def mylistCreate(name,mylistCount):
             browser.refresh()
 
 #マイリス追加
-def mylistAdd(name):
+def mylistAdd(name,browser):
     while True:
         try:
             btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
@@ -162,7 +162,7 @@ def mylistAdd(name):
             browser.refresh()
 
 #タグ固定のチェック
-def TagCheck(tag):
+def TagCheck(tag,browser):
     while True:
         check = False
         if not browser.page_source:
@@ -231,6 +231,11 @@ def Authentication(tableName,id):
 #追加処理-発火ポイント
 def Add():
     DBcheck(tagName)
+
+    #chrome driver の起動
+    browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
+    browser.implicitly_wait(1)
+
     #mylistCount,mylistNameの取得
     #ここでタグ固有のデータベース名を取得する
     conn = sqlite3.connect('niconico.db')
@@ -248,7 +253,7 @@ def Add():
 
     page = 1
 
-    login()
+    login(browser)
 
     checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
 
@@ -276,7 +281,7 @@ def Add():
             if Authentication(tableName,int(URL[9:17])) == True:
                 continue
 
-            mylistCount = MainScraping(URL,mylistCount,mylistName)
+            mylistCount = MainScraping(URL,mylistCount,mylistName,browser)
 
         page += 1
         checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
@@ -398,7 +403,4 @@ PASS = getpass.getpass("LoginPassword>")
 
 #マイリスト追加
 if mode == "add":
-    #chrome driver の起動
-    browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
-    browser.implicitly_wait(1)
     Add()
