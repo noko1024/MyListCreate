@@ -335,9 +335,9 @@ def Remove():
         print("Already added\nPlease delete it manually\nmylistName")
         for mylist in answer:
             if mylist[1] != 0:
-                print("\t%sその%s" % (mylist[0],mylist[1]))
+                print("\t%sその%s\n" % (mylist[0],mylist[1]))
             else:
-                print("\t%s" % mylist[0])
+                print("\t%s\n" % mylist[0])
             #IDを除外登録する
             IdAdd(passid)
 
@@ -350,6 +350,11 @@ def RmTable():
     #タグ用テーブル名の取得
     c.execute("select tableName from tableDB where tag = '%s'" % tagName)
     tableName = c.fetchone()[0]
+
+    if not tableName:
+        print("There is no table\n")
+        return
+
 
     #テーブルと登録データの削除
     c.execute("drop table %s" % tableName)
