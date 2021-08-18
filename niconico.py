@@ -401,9 +401,9 @@ mode = input("mode>")
 #マイリスト除外登録
 if mode == "remove":
     Remove()
-
-#探すタグの指定
-tagName = input("tagName>")
+else:
+    #探すタグの指定
+    tagName = input("tagName>")
 
 #テーブルの削除
 if mode == "rmtable":
@@ -412,10 +412,10 @@ if mode == "rmtable":
 if mode == "namechange":
     NameChange()
 
-#ニコニコログイン用のデータの取得
-USER = input("LoginID>")
-PASS = getpass.getpass("LoginPassword>")
 
 #マイリスト追加
 if mode == "add":
+    #ニコニコログイン用のデータの取得
+    USER = input("LoginID>")
+    PASS = getpass.getpass("LoginPassword>")
     Add()
