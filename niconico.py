@@ -73,14 +73,24 @@ def DBcheck(tag):
             c.execute("select count(*) from sqlite_master where type = 'table' and name = '%s'" % name)
             ch = int(c.fetchone()[0])
             if ch == 0:
-                break;
+                break
+
+
+        #指定しなければタグ名そのまま
+        mylistName = input("tableName>")
+
+        #マイリスト名の指定がなければタグ名に
+        if not mylistName:
+            mylist = tag
+        else:
+            mylist = mylistName
 
         #テーブルの生成
         c.execute("create table %s(id int primary key,mylistNum int)" % name)
         #インデックスを生成して検索速度をあげる
         c.execute("create index idindex on %s(id)" % name)
         #テーブルDBにデータを追加する
-        c.execute("insert into tableDB values ('%s','%s',%s,'%s')" % (tag,name,0,tag))
+        c.execute("insert into tableDB values ('%s','%s',%s,'%s')" % (tag,name,0,mylist))
 
     conn.commit()
     conn.close()
