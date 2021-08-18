@@ -200,6 +200,9 @@ def DataBaseAdd(tableName):
     #bufferからタグテーブルにデータを移す
     c.execute("insert into %s select id,mylistNum from buffer" % tableName)
 
+    #buffer table 内のデータを全て削除する
+    c.execute("delete from buffer")
+
     conn.commit()
     conn.close()
 
