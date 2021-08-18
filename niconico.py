@@ -66,6 +66,7 @@ def DBcheck(tag):
                 break;
 
         c.execute("create table %s(id int primary key,mylistNum int)" % name)
+        c.execute("create index idindex on %s(id)" % name)
         c.execute("insert into tableDB values ('%s','%s',%s,'%s')" % (tag,name,0,tag))
 
     conn.commit()
