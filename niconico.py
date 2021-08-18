@@ -48,7 +48,7 @@ def StartUp():
         #タグテーブルのデータ数を出す
         c.execute("select count(*) from %s" % table)
         #マイリスト登録数を更新する
-        c.execute("update tableDB set mylistCount = %s" % c.fetchone()[0])
+        c.execute("update tableDB set mylistCount = %s where tag = %s" % (c.fetchone()[0],tag[0]))
 
     #buffer table 内のデータを全て削除する
     c.execute("delete from buffer")
@@ -381,6 +381,18 @@ def RmTable():
     conn.commit()
     conn.close()
 
+def NameChange():
+    conn = sqlite3.connect('niconico.db')
+    c = conn.cursor()
+
+    mylistName = input("tableName>")
+
+    #タグ用テーブル名の取得
+    c.execute("update tableDB set tableName = '%s' where tag = '%s'" % (mylistName,tagName))
+
+    conn.commit()
+    conn.close()
+
 StartUp()
 
 #mode選択
@@ -396,6 +408,9 @@ tagName = input("tagName>")
 #テーブルの削除
 if mode == "rmtable":
     RmTable()
+
+if mode == "namechange":
+    NameChange()
 
 #ニコニコログイン用のデータの取得
 USER = input("LoginID>")
