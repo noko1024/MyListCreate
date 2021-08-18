@@ -193,7 +193,7 @@ def Authentication(tableName,id):
         return False
 
 #追加処理-発火ポイント
-def AddMain():
+def Add():
     DBcheck(tagName)
     #mylistCount,mylistNameの取得
     #ここでタグ固有のデータベース名を取得する
@@ -284,7 +284,7 @@ def Check(id):
         return None
 
 #削除発火ポイント
-def RemoveMain():
+def Remove():
     passid = int(input("id>"))
     answer = Check(passid)
     if answer == "removed":
@@ -302,19 +302,32 @@ def RemoveMain():
             IdAdd(passid)
 
 
+def RmTable():
+    conn = sqlite3.connect('niconico.db')
+    c = conn.cursor()
+
+    c.execute("select tableName from tableDB where tag = '%s'" % tagName)
+    tableName = c.fetchone()[0]
+
+    c.execute("drop table %s" % tableName)
+    c.execute("delete from tableDB where tag = '%s'" % tagName)
+
+    conn.commit()
+    conn.close()
+
 StartUp()
 #初期設定
 mode = input("mode>")
 if mode == "remove":
-    RemoveMain()
+    Remove()
 
 tagName = input("tagName>")
 if mode == "rmtable":
-    pass
+    RmTable()
 
 USER = input("LoginID>")
 PASS = getpass.getpass("LoginPassword>")
 if mode == "add":
     browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
     browser.implicitly_wait(1)
-    AddMain()
+    Add()
