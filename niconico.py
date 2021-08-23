@@ -48,7 +48,7 @@ def StartUp():
         #タグテーブルのデータ数を出す
         c.execute("select count(*) from %s" % table)
         #マイリスト登録数を更新する
-        c.execute("update tableDB set mylistCount = %s where tag = %s" % (c.fetchone()[0],tag[0]))
+        c.execute("update tableDB set mylistCount = %s where tag = '%s'" % (c.fetchone()[0],tag[0]))
 
     #buffer table 内のデータを全て削除する
     c.execute("delete from buffer")
@@ -106,11 +106,13 @@ def MainScraping(URL,mylistCount,mylistName,browser):
     #タグ固定のチェック
     if TagCheck(tagName,browser) == True:
         if mylistCount % 500 == 0:
-            #マイリストの生成&追加
+            #マイリストの生成
             mylistCreate(name,mylistCount,browser)
-        else:
-            #マイリストへ追加
-            mylistAdd(name,browser)
+            browser.get(rootURL + URL)
+            time.sleep(0.5)
+
+        #マイリストへ追加
+        mylistAdd(name,browser)
         mylistCount += 1
 
     conn = sqlite3.connect('niconico.db')
@@ -131,13 +133,16 @@ def MainScraping(URL,mylistCount,mylistName,browser):
 def mylistCreate(name,mylistCount,browser):
     while True:
         try:
-            btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
-            btn[0].click()
-            btn = browser.find_element_by_xpath('//*[@data-mylist-id="-2"]')
+            createURL = "https://www.nicovideo.jp/my/mylist"
+            browser.get(createURL)
+            btn = browser.find_element_by_css_selector('button.ModalActionButton.MylistsContainer-actionItem')
             btn.click()
-            e = browser.find_element_by_css_selector('input.AddMylistModal-nameInput')
+            e = browser.find_element_by_name('title')
+            e.clear()
             e.send_keys(name)
-            btn = browser.find_element_by_css_selector('button.ActionButton.AddMylistModal-submit')
+            btn = browser.find_element_by_css_selector('label.RadioItem-label')
+            btn.click()
+            btn = browser.find_element_by_css_selector('button.ModalContent-footerSubmitButton')
             btn.click()
             print("mylistCreate:success")
             break
@@ -381,14 +386,15 @@ def RmTable():
     conn.commit()
     conn.close()
 
+#これ修正必要
 def NameChange():
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    mylistName = input("tableName>")
+    mylistName = input("mylistName>")
 
     #タグ用テーブル名の取得
-    c.execute("update tableDB set tableName = '%s' where tag = '%s'" % (mylistName,tagName))
+    c.execute("update tableDB set mylistName = '%s' where tag = '%s'" % (mylistName,tagName))
 
     conn.commit()
     conn.close()
