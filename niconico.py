@@ -298,7 +298,7 @@ def IdAdd(id):
     c = conn.cursor()
 
     #削除テーブルに登録する
-    c,execute("insert into rmTable valeus ('%s')" % id)
+    c.execute("insert into rmTable valeus ('%s')" % id)
 
     conn.commit()
     conn.close()
