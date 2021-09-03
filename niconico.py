@@ -48,7 +48,7 @@ def StartUp():
         #タグテーブルのデータ数を出す
         c.execute("select count(*) from %s" % table)
         #マイリスト登録数を更新する
-        c.execute("update tableDB set mylistCount = %s where tag = %s" % (c.fetchone()[0],tag[0]))
+        c.execute("update tableDB set mylistCount = %s where tag = '%s'" % (c.fetchone()[0],tag[0]))
 
     #buffer table 内のデータを全て削除する
     c.execute("delete from buffer")
@@ -96,7 +96,7 @@ def DBcheck(tag):
     conn.close()
 
 #htmlからのデータ取得
-def MainScraping(URL,mylistCount,mylistName,browser):
+def MainScraping(URL,title,mylistCount,mylistName,browser):
     if int(mylistCount/500) >= 1:
         name = "%sその%s" % (mylistName,int(mylistCount/500))
     else:
@@ -104,13 +104,15 @@ def MainScraping(URL,mylistCount,mylistName,browser):
     browser.get(rootURL + URL)
     time.sleep(0.5)
     #タグ固定のチェック
-    if TagCheck(tagName,browser) == True:
+    if TagCheck(title,tagName,browser) == True:
         if mylistCount % 500 == 0:
-            #マイリストの生成&追加
+            #マイリストの生成
             mylistCreate(name,mylistCount,browser)
-        else:
-            #マイリストへ追加
-            mylistAdd(name,browser)
+            browser.get(rootURL + URL)
+            time.sleep(0.5)
+
+        #マイリストへ追加
+        mylistAdd(name,browser)
         mylistCount += 1
 
     conn = sqlite3.connect('niconico.db')
@@ -131,13 +133,16 @@ def MainScraping(URL,mylistCount,mylistName,browser):
 def mylistCreate(name,mylistCount,browser):
     while True:
         try:
-            btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
-            btn[0].click()
-            btn = browser.find_element_by_xpath('//*[@data-mylist-id="-2"]')
+            createURL = "https://www.nicovideo.jp/my/mylist"
+            browser.get(createURL)
+            btn = browser.find_element_by_css_selector('button.ModalActionButton.MylistsContainer-actionItem')
             btn.click()
-            e = browser.find_element_by_css_selector('input.AddMylistModal-nameInput')
+            e = browser.find_element_by_name('title')
+            e.clear()
             e.send_keys(name)
-            btn = browser.find_element_by_css_selector('button.ActionButton.AddMylistModal-submit')
+            btn = browser.find_element_by_css_selector('label.RadioItem-label')
+            btn.click()
+            btn = browser.find_element_by_css_selector('button.ModalContent-footerSubmitButton')
             btn.click()
             print("mylistCreate:success")
             break
@@ -162,7 +167,7 @@ def mylistAdd(name,browser):
             browser.refresh()
 
 #タグ固定のチェック
-def TagCheck(tag,browser):
+def TagCheck(title,tag,browser):
     while True:
         check = False
         if not browser.page_source:
@@ -175,9 +180,9 @@ def TagCheck(tag,browser):
         lookTagList.extend(soup.select(".TagItem.is-locked"))
 
         if not lookTagList:
-            access = soup.find("h1").text
+            access = soup.find("h1",{"class":"VideoTitle"}).text
             print(access)
-            if access == "短時間での連続アクセスはご遠慮ください":
+            if access != title:
                 time.sleep(70)
                 browser.refresh()
                 continue
@@ -266,22 +271,22 @@ def Add():
         if not maindiv:
             print("finish")
             break
-        rawList = maindiv.select(".itemThumbWrap")
+        rawList = maindiv.select(".itemTitle")
 
-        URLs = []
+        DataList = []
 
         for raw in rawList:
-            URLs.append(raw.get("href"))
+            DataList.append([raw.find("a").get("href"),raw.find("a").get("title")])
 
-        URLs = [x for x in URLs if x != "#" and "api" not in x]
+        DataList = [x for x in DataList if x[0] != "#" and "api" not in x[0]]
 
-        for URL in URLs:
-            print(URL[9:17]+"start")
+        for data in DataList:
+            print(data[0][9:17]+"start")
             #マイリスト追加済みかどうか
-            if Authentication(tableName,int(URL[9:17])) == True:
+            if Authentication(tableName,int(data[0][9:17])) == True:
                 continue
 
-            mylistCount = MainScraping(URL,mylistCount,mylistName,browser)
+            mylistCount = MainScraping(data[0],data[1],mylistCount,mylistName,browser)
 
         page += 1
         checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
@@ -381,14 +386,15 @@ def RmTable():
     conn.commit()
     conn.close()
 
+#これ修正必要
 def NameChange():
     conn = sqlite3.connect('niconico.db')
     c = conn.cursor()
 
-    mylistName = input("tableName>")
+    mylistName = input("mylistName>")
 
     #タグ用テーブル名の取得
-    c.execute("update tableDB set tableName = '%s' where tag = '%s'" % (mylistName,tagName))
+    c.execute("update tableDB set mylistName = '%s' where tag = '%s'" % (mylistName,tagName))
 
     conn.commit()
     conn.close()
