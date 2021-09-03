@@ -96,7 +96,7 @@ def DBcheck(tag):
     conn.close()
 
 #htmlからのデータ取得
-def MainScraping(URL,mylistCount,mylistName,browser):
+def MainScraping(URL,title,mylistCount,mylistName,browser):
     if int(mylistCount/500) >= 1:
         name = "%sその%s" % (mylistName,int(mylistCount/500))
     else:
@@ -104,7 +104,7 @@ def MainScraping(URL,mylistCount,mylistName,browser):
     browser.get(rootURL + URL)
     time.sleep(0.5)
     #タグ固定のチェック
-    if TagCheck(tagName,browser) == True:
+    if TagCheck(title,tagName,browser) == True:
         if mylistCount % 500 == 0:
             #マイリストの生成
             mylistCreate(name,mylistCount,browser)
@@ -167,7 +167,7 @@ def mylistAdd(name,browser):
             browser.refresh()
 
 #タグ固定のチェック
-def TagCheck(tag,browser):
+def TagCheck(title,tag,browser):
     while True:
         check = False
         if not browser.page_source:
@@ -180,9 +180,9 @@ def TagCheck(tag,browser):
         lookTagList.extend(soup.select(".TagItem.is-locked"))
 
         if not lookTagList:
-            access = soup.find("h1").text
+            access = soup.find("h1",{"class":"VideoTitle"}).text
             print(access)
-            if access == "短時間での連続アクセスはご遠慮ください":
+            if access != title:
                 time.sleep(70)
                 browser.refresh()
                 continue
@@ -271,22 +271,22 @@ def Add():
         if not maindiv:
             print("finish")
             break
-        rawList = maindiv.select(".itemThumbWrap")
+        rawList = maindiv.select(".itemTitle")
 
-        URLs = []
+        DataList = []
 
         for raw in rawList:
-            URLs.append(raw.get("href"))
+            DataList.append([raw.find("a").get("href"),raw.find("a").get("title")])
 
-        URLs = [x for x in URLs if x != "#" and "api" not in x]
+        DataList = [x for x in DataList if x[0] != "#" and "api" not in x[0]]
 
-        for URL in URLs:
-            print(URL[9:17]+"start")
+        for data in DataList:
+            print(data[0][9:17]+"start")
             #マイリスト追加済みかどうか
-            if Authentication(tableName,int(URL[9:17])) == True:
+            if Authentication(tableName,int(data[0][9:17])) == True:
                 continue
 
-            mylistCount = MainScraping(URL,mylistCount,mylistName,browser)
+            mylistCount = MainScraping(data[0],data[1],mylistCount,mylistName,browser)
 
         page += 1
         checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
