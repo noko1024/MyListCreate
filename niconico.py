@@ -358,10 +358,10 @@ def Remove():
     else:
         print("Already added\nPlease delete it manually\nmylistName")
         for mylist in answer:
-            if mylist[1] != 0:
+            if mylist[1] == 0:
                 print("\t%sその%s\n" % (mylist[0],mylist[1]))
             else:
-                print("\t%s\n" % mylist[0])
+                print("\t%s\n" % mylist[0]+1)
             #IDを除外登録する
             IdAdd(passid)
 
