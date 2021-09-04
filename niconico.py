@@ -175,26 +175,26 @@ def TagCheck(title,tag,browser):
             browser.refresh()
             continue
         soup = BeautifulSoup(browser.page_source, "lxml")
+
+        access = soup.find("h1").text
+        print(access,title)
+        if access != title:
+            print("error")
+            time.sleep(70)
+            browser.refresh()
+            continue
+
         #タグ情報を取得(タグロック済み、ニコニコ大百科あり)
         lookTagList = soup.select(".TagItem.is-locked.is-nicodicAvailable")
         lookTagList.extend(soup.select(".TagItem.is-locked"))
 
-        if not lookTagList:
-            access = soup.find("h1",{"class":"VideoTitle"}).text
-            print(access)
-            if access != title:
-                time.sleep(70)
-                browser.refresh()
-                continue
-            else:
-                break
         for lookTag in lookTagList:
             tagName = lookTag.find("a",{"class":"Link TagItem-name"}).text
             if tagName.lower() == tag.lower():
                 check = True
                 break
-        print("TagCheck:"+str(check))
         break
+    print("TagCheck:"+str(check))
     return check
 
 #データベースへの登録
@@ -223,7 +223,7 @@ def Authentication(tableName,id):
     c.execute("select id from rmTable where id = '%s'" % id)
     check = c.fetchone()
 
-    print(check)
+    print(check,ch)
     #除外テーブル、タグテーブルに該当した場合
     if check or ch:
         print("Authentication:True")
@@ -276,7 +276,8 @@ def Add():
         DataList = []
 
         for raw in rawList:
-            DataList.append([raw.find("a").get("href"),raw.find("a").get("title")])
+            if raw.find("a"):
+                DataList.append([raw.find("a").get("href"),raw.find("a").get("title")])
 
         DataList = [x for x in DataList if x[0] != "#" and "api" not in x[0]]
 
