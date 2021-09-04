@@ -98,7 +98,7 @@ def DBcheck(tag):
 #htmlからのデータ取得
 def MainScraping(URL,title,mylistCount,mylistName,browser):
     if int(mylistCount/500) >= 1:
-        name = "%sその%s" % (mylistName,int(mylistCount/500))
+        name = "%sその%s" % (mylistName,int(mylistCount/500)+1)
     else:
         name = mylistName
     browser.get(rootURL + URL)
@@ -119,7 +119,7 @@ def MainScraping(URL,title,mylistCount,mylistName,browser):
     c = conn.cursor()
 
     #buffer table にデータを残しておく
-    c.execute("insert into buffer(id,mylistNum,tag) values ('%s','%s','%s')" % (int(URL[9:17]),int(mylistCount/25000),tagName))
+    c.execute("insert into buffer(id,mylistNum,tag) values ('%s','%s','%s')" % (int(URL[9:17]),int(mylistCount/500),tagName))
 
     conn.commit()
     conn.close()
