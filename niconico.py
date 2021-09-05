@@ -374,6 +374,7 @@ def RmTable():
     #タグ用テーブル名の取得
     c.execute("select tableName from tableDB where tag = '%s'" % tagName)
     tableName = c.fetchone()[0]
+    print(tableName)
 
     if not tableName:
         print("There is no table\n")
@@ -383,9 +384,11 @@ def RmTable():
     #テーブルと登録データの削除
     c.execute("drop table %s" % tableName)
     c.execute("delete from tableDB where tag = '%s'" % tagName)
+    c.execute("delete from buffer where tag = '%s'" % tagName)
 
     conn.commit()
     conn.close()
+    print("drop table")
 
 #これ修正必要
 def NameChange():
@@ -418,7 +421,6 @@ if mode == "rmtable":
 
 if mode == "namechange":
     NameChange()
-
 
 #マイリスト追加
 if mode == "add":
