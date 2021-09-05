@@ -105,9 +105,9 @@ def MainScraping(URL,title,mylistCount,mylistName,browser):
     time.sleep(0.5)
     #タグ固定のチェック
     if TagCheck(title,tagName,browser) == True:
-        if mylistCount % 500 == 0:
+        if mylistCount % 500 == 0 and not mylistChk(name,browser):
             #マイリストの生成
-            mylistCreate(name,mylistCount,browser)
+            mylistCreate(name,browser)
             browser.get(rootURL + URL)
             time.sleep(0.5)
 
@@ -129,8 +129,26 @@ def MainScraping(URL,title,mylistCount,mylistName,browser):
 
     return mylistCount
 
+def mylistChk(name,browser):
+    while True:
+        try:
+            btn = browser.find_elements_by_css_selector('button.ActionButton.VideoMenuContainer-button')
+            btn[0].click()
+        except:
+            time.sleep(10)
+            browser.refresh()
+            continue
+        if browser.find_element_by_xpath('//*[@data-mylist-name="%s"]' % name):
+            btn[0].click()
+            print("mylistChk:True")
+            return True
+        break
+    btn[0].click()
+    print("mylistChk:False")
+    return False
+
 #マイリスの生成
-def mylistCreate(name,mylistCount,browser):
+def mylistCreate(name,browser):
     while True:
         try:
             createURL = "https://www.nicovideo.jp/my/mylist"
