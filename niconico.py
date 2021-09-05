@@ -108,6 +108,7 @@ def MainScraping(URL,title,mylistCount,mylistName,browser):
         if mylistCount % 500 == 0:
             #マイリストの生成
             mylistCreate(name,mylistCount,browser)
+            #mylistAdd(name,browser)
             browser.get(rootURL + URL)
             time.sleep(0.5)
 
@@ -304,7 +305,7 @@ def IdAdd(id):
     c = conn.cursor()
 
     #削除テーブルに登録する
-    c.execute("insert into rmTable valeus ('%s')" % id)
+    c.execute("insert into rmTable values ('%s')" % id)
 
     conn.commit()
     conn.close()
