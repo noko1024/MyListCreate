@@ -1,23 +1,22 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import lxml
-import statistics
 import sqlite3
 import time
-import re
 import os
-import sys
-import pathlib
-import getpass
 import random
 import string
 import tkinter as tk
 import Twindow
+import requests
+import urllib
 
 cwd = os.path.split(os.path.realpath(__file__))[0]
 options = webdriver.ChromeOptions()
 options.add_argument('--ignore-certificate-errors')
 options.add_argument('--ignore-ssl-errors')
+
+header = {"User-Agent":"Hiziki"}
 
 rootURL = "https://www.nicovideo.jp"
 page = 1
@@ -276,40 +275,24 @@ def Add():
 	page = 1
 
 	login(browser)
+	response = requests.get("https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?q={}&targets=tagsExact&fields=contentId,title&_sort=%2BstartTime&_offset={}&_limit=100&_context=Hiziki".format(" ".join(chkTagList),0),headers=header).json()
+	DataList = [["/watch/"+movieInfo["contentId"],movieInfo["title"]] for movieInfo in response["data"]]
+	Maxloop = response["meta"]["totalCount"]//100
 
-	checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % ("+".join(chkTagList),page)
+	i = 1
+	while(i != Maxloop):
+	    time.sleep(1)
+	    i += 1
+	    response = requests.get("https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?q={}&targets=tagsExact&fields=contentId,title&_sort=%2BstartTime&_offset={}&_limit=100&_context=Hiziki".format(" ".join(chkTagList),i*100),headers=header).json()
+	    DataList.extend([["/watch/"+movieInfo["contentId"],movieInfo["title"]] for movieInfo in response["data"]])
 
-	browser.get(checkurl)
+	for data in DataList:
+		print(data[0][9:17]+"start")
+		#マイリスト追加済みかどうか
+		if Authentication(tableName,int(data[0][9:17])) == True:
+			continue
 
-	while True:
-		soup = BeautifulSoup(browser.page_source, "lxml")
-		#検索結果から動画のURLを抽出
-		maindiv = soup.find("div",{"class":"contentBody video uad videoList videoList01"})
-		if not maindiv:
-			print("finish")
-			break
-		rawList = maindiv.select(".itemTitle")
-
-		DataList = []
-
-		for raw in rawList:
-			if raw.find("a"):
-				DataList.append([raw.find("a").get("href"),raw.find("a").get("title")])
-
-		DataList = [x for x in DataList if x[0] != "#" and "api" not in x[0]]
-
-		for data in DataList:
-			print(data[0][9:17]+"start")
-			#マイリスト追加済みかどうか
-			if Authentication(tableName,int(data[0][9:17])) == True:
-				continue
-
-			mylistCount = MainScraping(data[0],data[1],mylistCount,mylistName,browser)
-
-		page += 1
-		checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % ("+".join(chkTagList),page)
-		browser.get(checkurl)
-		time.sleep(10)
+		mylistCount = MainScraping(data[0],data[1],mylistCount,mylistName,browser)
 
 	#データベースにbufferのデータを移す
 	DataBaseAdd(tableName)
