@@ -304,8 +304,8 @@ def IdAdd(id):
 	c = conn.cursor()
 
 	#削除テーブルに登録する
-	c.execute("insert into rmTable values ('%s')" % id)
-
+  c.execute("insert into rmTable values ('%s')" % id)
+  
 	conn.commit()
 	conn.close()
 
