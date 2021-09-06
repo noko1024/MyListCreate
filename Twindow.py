@@ -5,6 +5,7 @@ class Twindow():
 		print("init")
 
 		self.root = root
+		self.root.geometry("500x600")
 
 		self.canvasMain = tk.Canvas(root,width=500,height=100)
 		self.canvasMain.place(x=0,y=0)
@@ -221,3 +222,29 @@ class Twindow():
 			self.loginIdEntry.destroy()
 			self.loginPassEntry.destroy()
 			self.mylistNameEntry.destroy()
+
+class Rwindow():
+	def __init__(self,root):
+		print("init")
+
+		self.root = root
+		self.root.geometry("600x700")
+
+		self.canvas = tk.Canvas(root,width=600,height=700)
+		self.canvas.place(x=0,y=0)
+
+		self.TxtPlaceX = 150
+		self.TxtPlaceY = 30
+
+	def AddTxt(self,txt):
+		print("add txt")
+		self.canvas.create_text(self.TxtPlaceX,self.TxtPlaceY,text=txt,font=("",15))
+		self.TxtPlaceY += 30
+		if self.TxtPlaceY >= 700:
+			print("change")
+			self.TxtPlaceY = 30
+			self.TxtPlaceX = 450
+		self.canvas.update()
+
+	def Quit(self):
+		self.root.destroy()
