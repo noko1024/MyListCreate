@@ -278,14 +278,14 @@ def Add():
 	response = requests.get("https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?q={}&targets=tagsExact&fields=contentId,title&_sort=%2BstartTime&_offset={}&_limit=100&_context=Hiziki".format(" ".join(chkTagList),0),headers=header).json()
 	DataList = [["/watch/"+movieInfo["contentId"],movieInfo["title"]] for movieInfo in response["data"]]
 	Maxloop = response["meta"]["totalCount"]//100
+	print(response)
 
 	i = 1
-	while(i != Maxloop):
+	while(i <= Maxloop):
 		time.sleep(1)
 		i += 1
 		response = requests.get("https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?q={}&targets=tagsExact&fields=contentId,title&_sort=%2BstartTime&_offset={}&_limit=100&_context=Hiziki".format(" ".join(chkTagList),i*100),headers=header).json()
 		DataList.extend([["/watch/"+movieInfo["contentId"],movieInfo["title"]] for movieInfo in response["data"]])
-
 	for data in DataList:
 		print(data[0][9:17]+"start")
 		#マイリスト追加済みかどうか
