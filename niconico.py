@@ -11,6 +11,8 @@ import pathlib
 import getpass
 import random
 import string
+import tkinter as tk
+import Twindow
 
 cwd = os.path.split(os.path.realpath(__file__))[0]
 options = webdriver.ChromeOptions()
@@ -39,16 +41,16 @@ def StartUp():
     c = conn.cursor()
 
     #buffer table に追加されているデータのタグ情報でfor分を回す
-    for tag in c.execute("select tag from buffer"):
+    for mylistName in c.execute("select mylistName from buffer"):
         #そのタグのテーブルを探す
-        c.execute("select tableName from tableDB where tag = '%s'" % tag[0])
+        c.execute("select tableName from tableDB where mylistName = '%s'" % mylistName[0])
         table = c.fetchone()[0]
         #buffer table のデータをタグテーブルに移す
-        c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer where tag = '%s'" % (table,tag[0]))
+        c.execute("insert into %s(id,mylistNum) select id,mylistNum from buffer where mylistName = '%s'" % (table,mylistName[0]))
         #タグテーブルのデータ数を出す
         c.execute("select count(*) from %s" % table)
         #マイリスト登録数を更新する
-        c.execute("update tableDB set mylistCount = %s where tag = '%s'" % (c.fetchone()[0],tag[0]))
+        c.execute("update tableDB set mylistCount = %s where mylistName = '%s'" % (c.fetchone()[0],mylistName[0]))
 
     #buffer table 内のデータを全て削除する
     c.execute("delete from buffer")
@@ -56,12 +58,12 @@ def StartUp():
     conn.close()
 
 #データベースが生成されているかチェックする存在しなければ生成する
-def DBcheck(tag):
+def DBcheck(mylistName):
     conn = sqlite3.connect("niconico.db")
     c = conn.cursor()
 
     #タグテーブル名の取得
-    c.execute("select tableName from tableDB where tag = '%s'" % tag)
+    c.execute("select tableName from tableDB where mylistName = '%s'" % mylistName)
     tableName = c.fetchone()
 
     #タグテーブルが無かった場合
@@ -75,22 +77,12 @@ def DBcheck(tag):
             if ch == 0:
                 break
 
-
-        #指定しなければタグ名そのまま
-        mylistName = input("tableName>")
-
-        #マイリスト名の指定がなければタグ名に
-        if not mylistName:
-            mylist = tag
-        else:
-            mylist = mylistName
-
         #テーブルの生成
         c.execute("create table %s(id int primary key,mylistNum int)" % name)
         #インデックスを生成して検索速度をあげる
-        c.execute("create index idindex on %s(id)" % name)
+        c.execute("create index idindex%s on %s(id)" % (name,name))
         #テーブルDBにデータを追加する
-        c.execute("insert into tableDB values ('%s','%s',%s,'%s')" % (tag,name,0,mylist))
+        c.execute("insert into tableDB values ('%s','%s',%s)" % (mylistName,name,0))
 
     conn.commit()
     conn.close()
@@ -101,10 +93,12 @@ def MainScraping(URL,title,mylistCount,mylistName,browser):
         name = "%sその%s" % (mylistName,int(mylistCount/500)+1)
     else:
         name = mylistName
+    chkCp = [x for x in chkTagList]
+    excCp = [x for x in excTagList]
     browser.get(rootURL + URL)
     time.sleep(0.5)
     #タグ固定のチェック
-    if TagCheck(title,tagName,browser) == True:
+    if TagCheck(title,chkCp,excCp,browser) == True:
         if mylistCount % 500 == 0 and not mylistChk(name,browser):
             #マイリストの生成
             mylistCreate(name,browser)
@@ -119,7 +113,7 @@ def MainScraping(URL,title,mylistCount,mylistName,browser):
     c = conn.cursor()
 
     #buffer table にデータを残しておく
-    c.execute("insert into buffer(id,mylistNum,tag) values ('%s','%s','%s')" % (int(URL[9:17]),int(mylistCount/500),tagName))
+    c.execute("insert into buffer(id,mylistNum,mylistName) values ('%s','%s','%s')" % (int(URL[9:17]),int(mylistCount/500),mylistName))
 
     conn.commit()
     conn.close()
@@ -138,11 +132,14 @@ def mylistChk(name,browser):
             time.sleep(10)
             browser.refresh()
             continue
-        if browser.find_element_by_xpath('//*[@data-mylist-name="%s"]' % name):
+        try:
+            browser.find_element_by_xpath('//*[@data-mylist-name="%s"]' % name)
+        except:
+            break
+        else:
             btn[0].click()
             print("mylistChk:True")
             return True
-        break
     btn[0].click()
     print("mylistChk:False")
     return False
@@ -185,7 +182,7 @@ def mylistAdd(name,browser):
             browser.refresh()
 
 #タグ固定のチェック
-def TagCheck(title,tag,browser):
+def TagCheck(title,chkTags,excTags,browser):
     while True:
         check = False
         if not browser.page_source:
@@ -208,10 +205,13 @@ def TagCheck(title,tag,browser):
 
         for lookTag in lookTagList:
             tagName = lookTag.find("a",{"class":"Link TagItem-name"}).text
-            if tagName.lower() == tag.lower():
-                check = True
-                break
+            if tagName.lower() in excTags:
+                return check
+            if tagName.lower() in chkTags:
+                chkTags.remove(tagName.lower())
         break
+    if not chkTags:
+        check = True
     print("TagCheck:"+str(check))
     return check
 
@@ -253,7 +253,7 @@ def Authentication(tableName,id):
 
 #追加処理-発火ポイント
 def Add():
-    DBcheck(tagName)
+    DBcheck(mylistName)
 
     #chrome driver の起動
     browser = webdriver.Chrome(cwd+"/lib/chromedriver.exe",chrome_options=options)
@@ -265,20 +265,19 @@ def Add():
     c = conn.cursor()
 
     #おおもとのテーブルからテーブル名、マイリスト登録数、マイリスト名を取得
-    c.execute("select tableName,mylistCount,mylistName from tableDB where tag = '%s'" % tagName)
+    c.execute("select tableName,mylistCount from tableDB where mylistName = '%s'" % mylistName)
     confList = c.fetchone()
 
     conn.close()
 
     tableName = confList[0]
     mylistCount = confList[1]
-    mylistName = confList[2]
 
     page = 1
 
     login(browser)
 
-    checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
+    checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % ("+".join(chkTagList),page)
 
     browser.get(checkurl)
 
@@ -308,7 +307,7 @@ def Add():
             mylistCount = MainScraping(data[0],data[1],mylistCount,mylistName,browser)
 
         page += 1
-        checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % (tagName,page)
+        checkurl = "https://www.nicovideo.jp/tag/%s?page=%s&sort=f&order=a" % ("+".join(chkTagList),page)
         browser.get(checkurl)
         time.sleep(10)
 
@@ -360,28 +359,31 @@ def Check(id):
 #削除発火ポイント
 def Remove():
     #削除登録するID
-    passid = int(input("id>"))
-    #そのIDがどこのタグで登録済みチェックする
-    answer = Check(passid)
+    passids = twin.RmIds()
 
-    #削除登録済みだった場合
-    if answer == "removed":
-        print("This ID is registered")
-    #削除登録されていなかった場合
-    elif not answer:
-        print("Register this ID")
-        #IDを除外登録する
-        IdAdd(passid)
-    #既にマイリスト追加済みだった場合
-    else:
-        print("Already added\nPlease delete it manually\nmylistName")
-        for mylist in answer:
-            if mylist[1] != 0:
-                print("\t%sその%s\n" % (mylist[0],mylist[1]+1))
-            else:
-                print("\t%s\n" % mylist[0])
+    #この内部処理をtkinterに回そう(もう一度立ち上げなおす)
+    for passid in passids:
+        #そのIDがどこのタグで登録済みチェックする
+        answer = Check(passid)
+
+        #削除登録済みだった場合
+        if answer == "removed":
+            print("This ID is registered")
+        #削除登録されていなかった場合
+        elif not answer:
+            print("Register this ID")
             #IDを除外登録する
             IdAdd(passid)
+        #既にマイリスト追加済みだった場合
+        else:
+            print("Already added\nPlease delete it manually\nmylistName")
+            for mylist in answer:
+                if mylist[1] != 0:
+                    print("\t%sその%s\n" % (mylist[0],mylist[1]+1))
+                else:
+                    print("\t%s\n" % mylist[0])
+                #IDを除外登録する
+                IdAdd(passid)
 
 
 #テーブルの削除
@@ -423,26 +425,34 @@ def NameChange():
 
 StartUp()
 
+root = tk.Tk()
+root.title("hiZiKi")
+root.geometry("500x600")
+
+twin = Twindow.Twindow(root)
+
 #mode選択
-mode = input("mode>")
+mode = twin.Mode()
 
 #マイリスト除外登録
 if mode == "remove":
     Remove()
-else:
-    #探すタグの指定
-    tagName = input("tagName>")
 
+'''
+#機能移行予定
 #テーブルの削除
 if mode == "rmtable":
     RmTable()
 
 if mode == "namechange":
     NameChange()
+'''
 
 #マイリスト追加
 if mode == "add":
+    #探すタグの指定
+    chkTagList,excTagList = twin.Tags()
     #ニコニコログイン用のデータの取得
-    USER = input("LoginID>")
-    PASS = getpass.getpass("LoginPassword>")
+    USER,PASS = twin.LoginData()
+    mylistName = twin.MylistName()
     Add()
