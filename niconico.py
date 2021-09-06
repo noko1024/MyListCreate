@@ -321,7 +321,7 @@ def IdAdd(id):
     c = conn.cursor()
 
     #削除テーブルに登録する
-    c.execute("insert into rmTable valeus ('%s')" % id)
+    c.execute("insert into rmTable values ('%s')" % id)
 
     conn.commit()
     conn.close()
@@ -342,12 +342,12 @@ def Check(id):
     ans = []
 
     #マイリスト追加済みかを探す
-    for tag in c.execute("select tag,tableName,mylistName from tableDB"):
-        c.execute("select mylistNum from %s where id = '%s'" % (tag[1],id))
+    for tData in c.execute("select tableName,mylistName from tableDB"):
+        c.execute("select mylistNum from %s where id = '%s'" % (tData[0],id))
         myNum = c.fetchone()
 
         if myNum:
-            ans.append([tag[2],myNum[0]]) #[[mylistName,mylistNum]...]
+            ans.append([tData[1],myNum[0]]) #[[mylistName,mylistNum]...]
 
     #マイリスト追加済みだった場合
     if ans:
@@ -435,7 +435,7 @@ twin = Twindow.Twindow(root)
 mode = twin.Mode()
 
 #マイリスト除外登録
-if mode == "remove":
+if mode == "rm":
     Remove()
 
 '''
