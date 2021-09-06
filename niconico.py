@@ -281,10 +281,10 @@ def Add():
 
 	i = 1
 	while(i != Maxloop):
-	    time.sleep(1)
-	    i += 1
-	    response = requests.get("https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?q={}&targets=tagsExact&fields=contentId,title&_sort=%2BstartTime&_offset={}&_limit=100&_context=Hiziki".format(" ".join(chkTagList),i*100),headers=header).json()
-	    DataList.extend([["/watch/"+movieInfo["contentId"],movieInfo["title"]] for movieInfo in response["data"]])
+		time.sleep(1)
+		i += 1
+		response = requests.get("https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?q={}&targets=tagsExact&fields=contentId,title&_sort=%2BstartTime&_offset={}&_limit=100&_context=Hiziki".format(" ".join(chkTagList),i*100),headers=header).json()
+		DataList.extend([["/watch/"+movieInfo["contentId"],movieInfo["title"]] for movieInfo in response["data"]])
 
 	for data in DataList:
 		print(data[0][9:17]+"start")
@@ -304,7 +304,7 @@ def IdAdd(id):
 	c = conn.cursor()
 
 	#削除テーブルに登録する
-  	c.execute("insert into rmTable values ('%s')" % id)
+	c.execute("insert into rmTable values ('%s')" % id)
 
 	conn.commit()
 	conn.close()
@@ -370,7 +370,7 @@ def Remove():
 			print("Already added\nPlease delete it manually\nmylistName")
 			for mylist in answer:
 				if mylist[1] != 0:
-					rwin.AddTxt("%sその%s"%(mylist[0],mylost[1]+1))
+					rwin.AddTxt("%sその%s"%(mylist[0],mylist[1]+1))
 					print("\t%sその%s\n" % (mylist[0],mylist[1]+1))
 				else:
 					rwin.AddTxt("%s"%mylist[0])
