@@ -3,4 +3,5 @@
 *.exe
 *.log
 test.py
+*.BK
 __pycache__/*
